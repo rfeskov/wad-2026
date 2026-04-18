@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ chat.title }} - LLM Chat</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        .message { padding: 1rem 1.5rem; margin-bottom: 1.5rem; border-radius: var(--pico-border-radius); line-height: 1.6; }
+        .message.user { background-color: var(--pico-primary-background); color: var(--pico-primary-inverse); }
+        .message.assistant { background-color: var(--pico-muted-border-color); color: var(--pico-color); }
+        .message strong { opacity: 0.8; font-size: 0.9em; display: inline-block; margin-bottom: 0.5rem; }
+        #chat-box { 
+            height: 60vh; 
+            overflow-y: auto; 
+            padding: 1.5rem; 
+            border: 1px solid var(--pico-del-color); 
+            border-radius: var(--pico-border-radius); 
+            margin-bottom: 1.5rem;
+            background-color: var(--pico-form-element-background-color);
+        }
+        #message-form { margin-bottom: 0; }
+    </style>
+</head>
+<body>
+    <main class="container">
+        
+        <nav style="margin-bottom: 1.5rem; border-bottom: 1px solid var(--pico-muted-border-color); padding-bottom: 1rem;">
+            <ul>
+                <li><a href="/" class="secondary outline" role="button">← Back to Dashboard</a></li>
+            </ul>
+            <ul>
+                <li style="font-size: 1.25rem;"><strong>{{ chat.title }}</strong></li>
+            </ul>
+        </nav>
+
+        <div id="chat-box">
+            {% for msg in messages %}
+                <div class="message {{ msg.role }}">
+                    <strong>{{ 'You' if msg.role == 'user' else 'Assistant' }}:</strong><br>
+                    <span style="white-space: pre-wrap;">{{ msg.content }}</span>
+                </div>
+            {% endfor %}
+            {% if not messages %}
+                <p class="secondary" style="text-align: center; margin-top: 2rem;">No messages here. Say hi to the LLM!</p>
+            {% endif %}
+        </div>
+
+        <form id="message-form">
+            <fieldset role="group">
+                <input type="text" id="content-input" placeholder="Ask me something..." autocomplete="off" style="margin-bottom: 0;" required>
+                <button type="submit" id="send-button" style="margin-bottom: 0;">Send</button>
+            </fieldset>
+        </form>
+    </main>
+
+    <script>
+        const chatBox = document.getElementById("chat-box");
+        const form = document.getElementById("message-form");
+        const input = document.getElementById("content-input");
+        const sendBtn = document.getElementById("send-button");
+        const chatId = {{ chat.id }};
+
+        // Escapes HTML tags to prevent execution
+        function escapeHtml(unsafe) {
+            return unsafe
+                 .replace(/&/g, "&amp;")
+                 .replace(/</g, "&lt;")
+                 .replace(/>/g, "&gt;");
+        }
+
+        // Scroll to the bottom on load
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+        form.onsubmit = async (e) => {
+            e.preventDefault();
+            const text = input.value.trim();
+            if(!text) return;
+            
+            // Remove "Empty state" tag if any
+            const pTags = chatBox.querySelectorAll("p.secondary");
+            pTags.forEach(p => p.remove());
+
+            // Build User Message
+            const userMsg = document.createElement("div");
+            userMsg.className = "message user";
+            userMsg.innerHTML = "<strong>You:</strong><br><span style='white-space: pre-wrap;'>" + escapeHtml(text) + "</span>";
+            chatBox.appendChild(userMsg);
+            chatBox.scrollTop = chatBox.scrollHeight;
+            
+            input.value = "";
+            input.disabled = true;
+            sendBtn.setAttribute("aria-busy", "true");
+
+            try {
+                const formData = new FormData();
+                formData.append('content', text);
+                
+                const response = await fetch(`/chat/${chatId}/message`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.body) throw new Error("No body returning");
+                
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder('utf-8');
+                
+                // Build Assistant Message Shell
+                let assistantMsg = document.createElement("div");
+                assistantMsg.className = "message assistant";
+                assistantMsg.innerHTML = "<strong>Assistant:</strong><br>";
+                
+                let contentSpan = document.createElement("span");
+                contentSpan.style.whiteSpace = "pre-wrap";
+                assistantMsg.appendChild(contentSpan);
+                chatBox.appendChild(assistantMsg);
+                
+                let buffer = "";
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n\n');
+                    buffer = lines.pop(); // Catch partial lines
+
+                    for (let i = 0; i < lines.length; i++) {
+                        const line = lines[i];
+                        if (line.startsWith("event: end")) {
+                           input.disabled = false;
+                           sendBtn.removeAttribute("aria-busy");
+                           input.focus();
+                           return; // End parsing
+                        }
+                        if (line.startsWith("data: ")) {
+                           const dataStr = line.slice(6);
+                           if (dataStr) {
+                               const token = JSON.parse(dataStr);
+                               // Using DOM to append dynamically avoids xss/rendering bugs
+                               contentSpan.appendChild(document.createTextNode(token));
+                               chatBox.scrollTop = chatBox.scrollHeight;
+                           }
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error("Chat error", err);
+                alert("Request to Server Failed.");
+            }
+            
+            input.disabled = false;
+            sendBtn.removeAttribute("aria-busy");
+            input.focus();
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - LLM Chat</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+</head>
+<body>
+    <main class="container" style="max-width: 600px; margin-top: 2rem;">
+        <article>
+            <h2 style="margin-bottom: 1rem;">Create an Account</h2>
+            {% if error %}
+            <p style="color: var(--pico-color-red-500);">{{ error }}</p>
+            {% endif %}
+            <form action="/auth/register" method="post">
+                <input type="email" name="email" placeholder="Email address" aria-label="Email" required>
+                <input type="password" name="password" placeholder="Choose a secure password" aria-label="Password" required>
+                <button type="submit">Create Account</button>
+            </form>
+            <hr>
+            <footer>
+                <div style="text-align: center;">
+                    <a role="button" class="secondary" href="/auth/github/login" style="margin-bottom: 1rem; width: 100%;">Sign up with GitHub</a>
+                    <p style="margin-bottom: 0;">Already have an account? <a href="/auth/login">Login here</a></p>
+                </div>
+            </footer>
+        </article>
+    </main>
+</body>
+</html>

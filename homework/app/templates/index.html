@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Chat Dashboard</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <style>
+        .chat-list-link { display: block; padding: 1rem; border-radius: var(--pico-border-radius); background: var(--pico-card-background-color); margin-bottom: 1rem; text-decoration: none; border: 1px solid var(--pico-muted-border-color); transition: all 0.2s;}
+        .chat-list-link:hover { border-color: var(--pico-primary); transform: translateY(-2px); box-shadow: var(--pico-card-box-shadow); }
+    </style>
+</head>
+<body>
+    <main class="container">
+        <nav style="margin-bottom: 2rem;">
+            <ul>
+                <li><strong>🧩 Local LLM Chat</strong></li>
+            </ul>
+            <ul>
+                <li><small class="secondary" style="margin-right:1rem;">Signed in as <b>{{ user.email if user.email else user.github_id }}</b></small></li>
+                <li><a href="/auth/logout" role="button" class="secondary outline">Logout</a></li>
+            </ul>
+        </nav>
+        
+        <section>
+            <article>
+                <h3 style="margin-bottom: 1rem;">Create a New Chat</h3>
+                <form action="/chat/new" method="post" style="margin-bottom: 0;">
+                    <fieldset role="group" style="margin-bottom: 0;">
+                        <input type="text" name="title" required placeholder="What do you want to talk about?" aria-label="Chat Title">
+                        <button type="submit">Start Chat</button>
+                    </fieldset>
+                </form>
+            </article>
+        </section>
+
+        <section style="margin-top: 2rem;">
+            <h3>Your Recent Chats</h3>
+            {% if user.chats %}
+                <div class="grid">
+                    {% for chat in user.chats | reverse %}
+                        <a href="/chat/{{ chat.id }}" class="chat-list-link">
+                            <h4 style="margin-bottom: 0.5rem;">{{ chat.title }}</h4>
+                            <small class="secondary">{{ chat.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                        </a>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="secondary">You don't have any chats yet. Start a new one above!</p>
+            {% endif %}
+        </section>
+    </main>
+</body>
+</html>
