@@ -23,3 +23,24 @@
 
 */.DS_Store
 .DS_Store
+homework/model.gguf
+
+# Database data
+data/
+pgdata/
+redis_data/
+
+# Virtual environments
+.venv/
+venv/
+
+# Environment variables
+.env
+
+# Model weights
+*.gguf
+
+# Python caching
+__pycache__/
+*.pyc
+
